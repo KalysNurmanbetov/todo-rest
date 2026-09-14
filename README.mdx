@@ -1,0 +1,201 @@
+# todo-rest
+
+A small REST API for managing tasks (todos), built with the Go standard library only (`net/http`, no framework). Written as a learning project.
+
+## Stack
+
+- Go 1.22+ (uses the enhanced `net/http.ServeMux` routing — `"METHOD /path/{param}"` patterns and `r.PathValue`)
+- No external dependencies — in-memory storage (a `map[string]Task` guarded by a mutex), data is lost on restart
+
+## Running it
+
+```bash
+go run .
+```
+
+The server listens on `http://localhost:9091`.
+
+## Architecture
+
+```
+domain/      # Task entity + invariants, TaskRepostory (in-memory store), domain errors
+infra/       # HTTP controller, DTOs, request/response helpers, ID generator
+main.go      # wiring: repository -> controller -> routes
+```
+
+- `Task` enforces its own invariants (e.g. you can't complete an already-completed task) — the HTTP layer never mutates task state directly, it always goes through domain methods like `task.Complete()`.
+- `TaskRepostory.Update(id, fn)` runs a read-modify-write against a task under a single lock, so state transitions are atomic even under concurrent requests.
+- All responses (success and error) are JSON, served with `Content-Type: application/json`.
+
+## API Reference
+
+Base URL: `http://localhost:9091`
+
+| Method | Path | Description |
+|---|---|---|
+| `POST` | `/tasks` | Create a task |
+| `GET` | `/tasks` | List tasks (optionally filtered) |
+| `GET` | `/tasks/{id}` | Get a single task |
+| `POST` | `/tasks/{id}/complete` | Mark a task as completed |
+| `POST` | `/tasks/{id}/uncomplete` | Mark a task as not completed |
+| `DELETE` | `/tasks/{id}` | Delete a task |
+
+---
+
+### Create a task
+
+```
+POST /tasks
+Content-Type: application/json
+```
+
+**Body**
+
+```json
+{
+  "title": "Buy milk"
+}
+```
+
+**Response — `201 Created`**
+
+```json
+{
+  "id": "1",
+  "title": "Buy milk"
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `400 Bad Request` | Malformed JSON, or `title` is empty |
+
+---
+
+### List tasks
+
+```
+GET /tasks
+GET /tasks?completed=true
+GET /tasks?completed=false
+```
+
+The optional `completed` query parameter filters the list. Omit it (or pass any other value) to get all tasks.
+
+**Response — `200 OK`**
+
+```json
+[
+  { "id": "1", "title": "Buy milk", "completed": false },
+  { "id": "2", "title": "Walk the dog", "completed": true }
+]
+```
+
+---
+
+### Get a task
+
+```
+GET /tasks/{id}
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "1",
+  "title": "Buy milk",
+  "completed": false
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `404 Not Found` | No task with that `id` |
+
+---
+
+### Complete a task
+
+```
+POST /tasks/{id}/complete
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "1",
+  "title": "Buy milk",
+  "completed": true
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `404 Not Found` | No task with that `id` |
+| `500 Internal Server Error` | Task is already completed |
+
+---
+
+### Uncomplete a task
+
+```
+POST /tasks/{id}/uncomplete
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "1",
+  "title": "Buy milk",
+  "completed": false
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `404 Not Found` | No task with that `id` |
+| `500 Internal Server Error` | Task is already uncompleted |
+
+---
+
+### Delete a task
+
+```
+DELETE /tasks/{id}
+```
+
+**Response — `204 No Content`**
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `404 Not Found` | No task with that `id` |
+
+---
+
+## Error format
+
+All errors share one shape:
+
+```json
+{
+  "message": "task with id '99' was not found",
+  "time": "2026-09-14T12:00:00Z"
+}
+```
+
+## Known limitations
+
+- Storage is in-memory only — restarting the server clears all tasks.

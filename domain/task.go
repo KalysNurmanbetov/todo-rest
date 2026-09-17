@@ -1,6 +1,7 @@
 package domain
 
 import (
+	"strings"
 	"time"
 )
 
@@ -12,15 +13,18 @@ type Task struct {
 	CompletedAt *time.Time
 }
 
-func NewTask(id string, title string) Task {
+func NewTask(id string, title string) (*Task, error) {
+	if strings.Trim(title, " ") == "" {
+		return nil, ErrEmptyTitle
+	}
 
-	return Task{
+	return &Task{
 		Id:          id,
 		Title:       title,
 		Completed:   false,
 		CreateAt:    time.Now(),
 		CompletedAt: nil,
-	}
+	}, nil
 }
 
 func (t *Task) ChangeTitle(title string) error {
@@ -30,7 +34,7 @@ func (t *Task) ChangeTitle(title string) error {
 
 func (t *Task) Complete() error {
 	if t.Completed {
-		return TaskAlreadCompletedError{TaskId: t.Id}
+		return ErrTaskAlreadyCompleted
 	}
 	completeTime := time.Now()
 
@@ -41,7 +45,7 @@ func (t *Task) Complete() error {
 
 func (t *Task) Uncomplete() error {
 	if t.Completed == false {
-		return TaskAlreadUncompletedError{TaskId: t.Id}
+		return ErrTaskAlreadyUncompleted
 	}
 	t.Completed = false
 	t.CompletedAt = nil

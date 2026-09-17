@@ -24,7 +24,11 @@ func (c *TaskController) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	task := domain.NewTask(c.idGenerator.Generate(), dto.Title)
+	task, err := domain.NewTask(c.idGenerator.Generate(), dto.Title)
+	if err != nil {
+		CreateResponseWithError(w, err.Error(), http.StatusConflict)
+		return
+	}
 	c.taskRepository.Insert(task)
 
 	CreateResponseWithJsonBody(w, TaskCreteadDto{Id: task.Id, Title: task.Title}, http.StatusCreated)
@@ -47,7 +51,7 @@ func (c *TaskController) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *TaskController) GetAllTasks(w http.ResponseWriter, r *http.Request) {
-	var tasks []domain.Task
+	var tasks []*domain.Task
 	completed := r.URL.Query().Get("completed")
 
 	switch completed {
@@ -80,9 +84,9 @@ func (c *TaskController) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	})
 
 	if err != nil {
-		var notFoundErr domain.TaskNotFoundError
+		err = fmt.Errorf("task %q: %w", id, err)
 		var code int
-		if errors.As(err, &notFoundErr) {
+		if errors.Is(err, domain.ErrTaskNotFound) {
 			code = http.StatusNotFound
 		} else {
 			code = http.StatusConflict
@@ -108,12 +112,12 @@ func (c *TaskController) UncompleteTask(w http.ResponseWriter, r *http.Request) 
 	})
 
 	if err != nil {
-		var notFoundErr domain.TaskNotFoundError
+		err = fmt.Errorf("task %q: %w", id, err)
 		var code int
-		if errors.As(err, &notFoundErr) {
+		if errors.Is(err, domain.ErrTaskNotFound) {
 			code = http.StatusNotFound
 		} else {
-			code = http.StatusInternalServerError
+			code = http.StatusConflict
 		}
 
 		CreateResponseWithError(w, err.Error(), code)
@@ -134,7 +138,8 @@ func (c *TaskController) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	ok := c.taskRepository.RemoveById(id)
 
 	if !ok {
-		CreateResponseWithError(w, domain.TaskNotFoundError{TaskId: id}.Error(), http.StatusNotFound)
+		CreateResponseWithError(w, domain.ErrTaskNotFound.Error(), http.StatusNotFound)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

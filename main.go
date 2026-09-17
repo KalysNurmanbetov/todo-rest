@@ -16,7 +16,7 @@ func main() {
 	mux.HandleFunc("GET /tasks/{id}", taskController.GetTask)
 	mux.HandleFunc("GET /tasks", taskController.GetAllTasks)
 	mux.HandleFunc("POST /tasks/{id}/complete", taskController.CompleteTask) //could also do PATCH with request body {complete: bool}
-	mux.HandleFunc("POST /tasks/{id}/uncomplete", taskController.CompleteTask)
+	mux.HandleFunc("POST /tasks/{id}/uncomplete", taskController.UncompleteTask)
 	mux.HandleFunc("DELETE /tasks/{id}", taskController.DeleteTask)
 
 	if err := http.ListenAndServe(":9091", mux); err != nil {

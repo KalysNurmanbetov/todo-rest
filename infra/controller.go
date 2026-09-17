@@ -139,6 +139,7 @@ func (c *TaskController) DeleteTask(w http.ResponseWriter, r *http.Request) {
 
 	if !ok {
 		CreateResponseWithError(w, domain.ErrTaskNotFound.Error(), http.StatusNotFound)
+		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)

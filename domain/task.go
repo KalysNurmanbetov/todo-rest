@@ -13,12 +13,12 @@ type Task struct {
 	CompletedAt *time.Time
 }
 
-func NewTask(id string, title string) (Task, error) {
+func NewTask(id string, title string) (*Task, error) {
 	if strings.Trim(title, " ") == "" {
-		return Task{}, ErrEmptyTitle
+		return nil, ErrEmptyTitle
 	}
 
-	return Task{
+	return &Task{
 		Id:          id,
 		Title:       title,
 		Completed:   false,

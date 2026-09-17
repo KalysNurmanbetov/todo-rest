@@ -51,7 +51,7 @@ func (c *TaskController) GetTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *TaskController) GetAllTasks(w http.ResponseWriter, r *http.Request) {
-	var tasks []domain.Task
+	var tasks []*domain.Task
 	completed := r.URL.Query().Get("completed")
 
 	switch completed {

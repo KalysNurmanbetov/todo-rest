@@ -27,7 +27,7 @@ func (r *TaskRepostory) Update(id string, fn func(*Task) error) (Task, error) {
 
 	t, ok := r.tasks[id]
 	if !ok {
-		return Task{}, TaskNotFoundError{TaskId: id}
+		return Task{}, ErrTaskNotFound
 	}
 	if err := fn(&t); err != nil {
 		return Task{}, err

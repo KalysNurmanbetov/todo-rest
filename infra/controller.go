@@ -117,7 +117,7 @@ func (c *TaskController) UncompleteTask(w http.ResponseWriter, r *http.Request) 
 		if errors.Is(err, domain.ErrTaskNotFound) {
 			code = http.StatusNotFound
 		} else {
-			code = http.StatusInternalServerError
+			code = http.StatusConflict
 		}
 
 		CreateResponseWithError(w, err.Error(), code)

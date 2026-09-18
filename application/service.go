@@ -5,6 +5,14 @@ import (
 	"todo-rest/domain"
 )
 
+type CompletionFilter string
+
+const (
+	All            CompletionFilter = "all"
+	AllCompleted   CompletionFilter = "completed"
+	AllUncompleted CompletionFilter = "uncompleted"
+)
+
 type TaskService struct {
 	taskRepository domain.TaskRepostory
 	mtx            sync.RWMutex
@@ -55,14 +63,25 @@ func (ts *TaskService) DeleteTask(id string) error {
 	return ts.taskRepository.RemoveById(taskId)
 }
 
-// TODO: Add filtering
-func (ts *TaskService) GetAllTasks() []*domain.Task {
+func (ts *TaskService) GetAllTasks(f CompletionFilter) []*domain.Task {
+	var tasks []*domain.Task
+
 	ts.mtx.RLock()
 	defer ts.mtx.RUnlock()
-	return ts.taskRepository.FindAll()
+
+	switch f {
+	case AllCompleted:
+		tasks = ts.taskRepository.FindAllCompleted()
+	case AllUncompleted:
+		tasks = ts.taskRepository.FindAllUncompleted()
+	case All:
+		tasks = ts.taskRepository.FindAll()
+	}
+
+	return tasks
 }
 
-func (ts *TaskService) ChangeTaskTitle(id string, title string) (*domain.Task, error) {
+func (ts *TaskService) ChangeTaskTitle(id, title string) (*domain.Task, error) {
 	taskId, err := domain.TaskIdFromString(id)
 	if err != nil {
 		return nil, err

@@ -66,6 +66,6 @@ func (t *Task) CreatedAt() time.Time {
 	return t.createAt
 }
 
-func (t *Task) CompletedAt() time.Time {
-	return *t.completedAt
+func (t *Task) CompletedAt() *time.Time {
+	return t.completedAt
 }

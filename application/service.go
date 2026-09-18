@@ -1,26 +1,26 @@
-package task
+package application
 
 import (
 	"sync"
-	"todo-rest/domain/task"
+	"todo-rest/domain"
 )
 
 type TaskService struct {
-	taskRepository task.TaskRepostory
+	taskRepository domain.TaskRepostory
 	mtx            sync.RWMutex
 }
 
-func NewTaskService(repository task.TaskRepostory) *TaskService {
+func NewTaskService(repository domain.TaskRepostory) *TaskService {
 	return &TaskService{taskRepository: repository}
 }
 
-func (ts *TaskService) InsertNewTask(title string) (*task.Task, error) {
-	taskTitle, err := task.NewTaskTitle(title)
+func (ts *TaskService) InsertNewTask(title string) (*domain.Task, error) {
+	taskTitle, err := domain.NewTaskTitle(title)
 	if err != nil {
 		return nil, err
 	}
 
-	newTask, err := task.NewTask(task.NewTaskId(), taskTitle)
+	newTask, err := domain.NewTask(domain.NewTaskId(), taskTitle)
 	if err != nil {
 		return nil, err
 	}
@@ -30,9 +30,9 @@ func (ts *TaskService) InsertNewTask(title string) (*task.Task, error) {
 	return ts.taskRepository.Insert(newTask)
 }
 
-func (ts *TaskService) GetTask(id string) (*task.Task, error) {
+func (ts *TaskService) GetTask(id string) (*domain.Task, error) {
 
-	taskId, err := task.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFromString(id)
 
 	if err != nil {
 		return nil, err
@@ -44,7 +44,7 @@ func (ts *TaskService) GetTask(id string) (*task.Task, error) {
 }
 
 func (ts *TaskService) DeleteTask(id string) error {
-	taskId, err := task.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFromString(id)
 
 	if err != nil {
 		return err
@@ -56,19 +56,19 @@ func (ts *TaskService) DeleteTask(id string) error {
 }
 
 // TODO: Add filtering
-func (ts *TaskService) GetAllTasks() []*task.Task {
+func (ts *TaskService) GetAllTasks() []*domain.Task {
 	ts.mtx.RLock()
 	defer ts.mtx.RUnlock()
 	return ts.taskRepository.FindAll()
 }
 
-func (ts *TaskService) ChangeTaskTitle(id string, title string) (*task.Task, error) {
-	taskId, err := task.TaskIdFromString(id)
+func (ts *TaskService) ChangeTaskTitle(id string, title string) (*domain.Task, error) {
+	taskId, err := domain.TaskIdFromString(id)
 	if err != nil {
 		return nil, err
 	}
 
-	newTitle, err := task.NewTaskTitle(title)
+	newTitle, err := domain.NewTaskTitle(title)
 	if err != nil {
 		return nil, err
 	}
@@ -88,8 +88,8 @@ func (ts *TaskService) ChangeTaskTitle(id string, title string) (*task.Task, err
 	return ts.taskRepository.Insert(task)
 }
 
-func (ts *TaskService) CompleteTask(id string) (*task.Task, error) {
-	taskId, err := task.TaskIdFromString(id)
+func (ts *TaskService) CompleteTask(id string) (*domain.Task, error) {
+	taskId, err := domain.TaskIdFromString(id)
 	if err != nil {
 		return nil, err
 	}
@@ -109,8 +109,8 @@ func (ts *TaskService) CompleteTask(id string) (*task.Task, error) {
 	return ts.taskRepository.Insert(task)
 }
 
-func (ts *TaskService) UncompleteTask(id string) (*task.Task, error) {
-	taskId, err := task.TaskIdFromString(id)
+func (ts *TaskService) UncompleteTask(id string) (*domain.Task, error) {
+	taskId, err := domain.TaskIdFromString(id)
 	if err != nil {
 		return nil, err
 	}

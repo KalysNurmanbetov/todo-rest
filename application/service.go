@@ -63,22 +63,23 @@ func (ts *TaskService) DeleteTask(id string) error {
 	return ts.taskRepository.RemoveById(taskId)
 }
 
-func (ts *TaskService) GetAllTasks(f CompletionFilter) []*domain.Task {
+func (ts *TaskService) GetAllTasks(f CompletionFilter) ([]*domain.Task, error) {
 	var tasks []*domain.Task
+	var err error
 
 	ts.mtx.RLock()
 	defer ts.mtx.RUnlock()
 
 	switch f {
 	case AllCompleted:
-		tasks = ts.taskRepository.FindAllCompleted()
+		tasks, err = ts.taskRepository.FindAllCompleted()
 	case AllUncompleted:
-		tasks = ts.taskRepository.FindAllUncompleted()
+		tasks, err = ts.taskRepository.FindAllUncompleted()
 	case All:
-		tasks = ts.taskRepository.FindAll()
+		tasks, err = ts.taskRepository.FindAll()
 	}
 
-	return tasks
+	return tasks, err
 }
 
 func (ts *TaskService) ChangeTaskTitle(id, title string) (*domain.Task, error) {

@@ -127,7 +127,6 @@ func (h *TaskHandler) UncompleteTask(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
-	var tasks []*domain.Task
 	completed := r.URL.Query().Get("completed")
 
 	var f application.CompletionFilter
@@ -140,14 +139,16 @@ func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
 		f = application.All
 	}
 
-	tasks = h.service.GetAllTasks(f)
+	if tasks, err := h.service.GetAllTasks(f); err != nil {
+		responseWithError(w, err, http.StatusConflict)
+	} else {
+		taskDtos := []TaskDto{}
+		for _, t := range tasks {
+			taskDtos = append(taskDtos, ToTaskDtoFrom(t))
+		}
 
-	taskDtos := []TaskDto{}
-	for _, t := range tasks {
-		taskDtos = append(taskDtos, ToTaskDtoFrom(t))
+		responseWithJsonBody(w, taskDtos, http.StatusOK)
 	}
-
-	responseWithJsonBody(w, taskDtos, http.StatusOK)
 }
 
 //Helpers

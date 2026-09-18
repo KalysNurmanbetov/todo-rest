@@ -140,7 +140,7 @@ func (h *TaskHandler) GetAllTasks(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if tasks, err := h.service.GetAllTasks(f); err != nil {
-		responseWithError(w, err, http.StatusConflict)
+		responseWithError(w, err, http.StatusInternalServerError)
 	} else {
 		taskDtos := []TaskDto{}
 		for _, t := range tasks {

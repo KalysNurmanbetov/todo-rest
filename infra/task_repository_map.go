@@ -26,9 +26,12 @@ func (r *TaskRepostoryMap) RemoveById(id string) error {
 	}
 }
 
-func (r *TaskRepostoryMap) FindById(id string) (*domain.Task, bool) {
-	t, ok := r.tasks[id]
-	return t, ok
+func (r *TaskRepostoryMap) FindById(id string) (*domain.Task, error) {
+	if t, ok := r.tasks[id]; ok == true {
+		return t, nil
+	} else {
+		return nil, domain.ErrTaskNotFound
+	}
 }
 
 func (r *TaskRepostoryMap) FindAll() []*domain.Task {

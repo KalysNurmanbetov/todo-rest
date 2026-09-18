@@ -30,17 +30,6 @@ type CreatedTaskDto struct {
 	Title string `json:"title"`
 }
 
-type CompletedTaskDto struct {
-	Id          string    `json:"id"`
-	Completed   bool      `json:"completed"`
-	CompletedAt time.Time `json:"completedAt"`
-}
-
-type UncompletedTaskDto struct {
-	Id        string `json:"id"`
-	Completed bool   `json:"completed"`
-}
-
 type TaskDto struct {
 	Id          string     `json:"id"`
 	Title       string     `json:"title"`

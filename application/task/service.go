@@ -1,9 +1,13 @@
 package task
 
-import "todo-rest/domain/task"
+import (
+	"sync"
+	"todo-rest/domain/task"
+)
 
 type TaskService struct {
 	taskRepository task.TaskRepostory
+	mtx            sync.RWMutex
 }
 
 func NewTaskService(repository task.TaskRepostory) *TaskService {
@@ -21,16 +25,21 @@ func (ts *TaskService) InsertNewTask(title string) (*task.Task, error) {
 		return nil, err
 	}
 
+	ts.mtx.Lock()
+	defer ts.mtx.Unlock()
 	return ts.taskRepository.Insert(newTask)
 }
 
 func (ts *TaskService) GetTask(id string) (*task.Task, error) {
+
 	taskId, err := task.TaskIdFromString(id)
 
 	if err != nil {
 		return nil, err
 	}
 
+	ts.mtx.RLock()
+	defer ts.mtx.RUnlock()
 	return ts.taskRepository.FindById(taskId)
 }
 
@@ -41,11 +50,15 @@ func (ts *TaskService) DeleteTask(id string) error {
 		return err
 	}
 
+	ts.mtx.Lock()
+	defer ts.mtx.Unlock()
 	return ts.taskRepository.RemoveById(taskId)
 }
 
 // TODO: Add filtering
 func (ts *TaskService) GetAllTasks() []*task.Task {
+	ts.mtx.RLock()
+	defer ts.mtx.RUnlock()
 	return ts.taskRepository.FindAll()
 }
 
@@ -59,6 +72,9 @@ func (ts *TaskService) ChangeTaskTitle(id string, title string) (*task.Task, err
 	if err != nil {
 		return nil, err
 	}
+
+	ts.mtx.Lock()
+	defer ts.mtx.Unlock()
 
 	task, err := ts.taskRepository.FindById(taskId)
 	if err != nil {
@@ -78,6 +94,9 @@ func (ts *TaskService) CompleteTask(id string) (*task.Task, error) {
 		return nil, err
 	}
 
+	ts.mtx.Lock()
+	defer ts.mtx.Unlock()
+
 	task, err := ts.taskRepository.FindById(taskId)
 	if err != nil {
 		return nil, err
@@ -95,6 +114,9 @@ func (ts *TaskService) UncompleteTask(id string) (*task.Task, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	ts.mtx.Lock()
+	defer ts.mtx.Unlock()
 
 	task, err := ts.taskRepository.FindById(taskId)
 	if err != nil {

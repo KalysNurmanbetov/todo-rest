@@ -105,7 +105,7 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 
 		responseWithError(w, err, code)
 	} else {
-		responseWithJsonBody(w, ComletedTaskDto{Id: task.Id().Value(), Completed: task.Completed(), CompletedAt: *task.CompletedAt()}, http.StatusOK)
+		responseWithJsonBody(w, CompletedTaskDto{Id: task.Id().Value(), Completed: task.Completed(), CompletedAt: *task.CompletedAt()}, http.StatusOK)
 	}
 }
 
@@ -122,7 +122,7 @@ func (h *TaskHandler) UncompleteTask(w http.ResponseWriter, r *http.Request) {
 		}
 		responseWithError(w, err, code)
 	} else {
-		responseWithJsonBody(w, UncomletedTaskDto{Id: task.Id().Value(), Completed: task.Completed()}, http.StatusOK)
+		responseWithJsonBody(w, UncompletedTaskDto{Id: task.Id().Value(), Completed: task.Completed()}, http.StatusOK)
 	}
 }
 

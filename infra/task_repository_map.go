@@ -88,10 +88,10 @@ func (m taskModel) toDomain() (*domain.Task, error) {
 
 }
 
-func (r *TaskRepostoryMap) getAllTasks(peridcate func(t taskModel) bool) ([]*domain.Task, error) {
+func (r *TaskRepostoryMap) getAllTasks(predicate func(t taskModel) bool) ([]*domain.Task, error) {
 	result := []*domain.Task{}
 	for _, t := range r.tasks {
-		if peridcate(t) {
+		if predicate(t) {
 			if task, err := t.toDomain(); err != nil {
 				return nil, err
 			} else {

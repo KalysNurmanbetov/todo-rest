@@ -69,3 +69,10 @@ func (t *Task) CreatedAt() time.Time {
 func (t *Task) CompletedAt() *time.Time {
 	return t.completedAt
 }
+
+// Only for infrustructure level to restore the state from storage
+func RehydrateTask(id TaskId, title TaskTitle, completed bool, createdAt time.Time, completedAt *time.Time) *Task {
+	return &Task{
+		id: id, title: title, completed: completed, createAt: createdAt, completedAt: completedAt,
+	}
+}

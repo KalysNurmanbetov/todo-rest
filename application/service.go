@@ -14,11 +14,11 @@ const (
 )
 
 type TaskService struct {
-	taskRepository domain.TaskRepostory
+	taskRepository domain.TaskRepository
 	mtx            sync.RWMutex
 }
 
-func NewTaskService(repository domain.TaskRepostory) *TaskService {
+func NewTaskService(repository domain.TaskRepository) *TaskService {
 	return &TaskService{taskRepository: repository}
 }
 

@@ -35,7 +35,11 @@ func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
 
 	if task, err := h.service.GetTask(id); err != nil {
 		err = fmt.Errorf("task %q: %w", id, err)
-		responseWithError(w, err, http.StatusNotFound)
+		code := http.StatusNotFound
+		if errors.Is(err, domain.ErrInvalidTaskId) {
+			code = http.StatusBadRequest
+		}
+		responseWithError(w, err, code)
 	} else {
 		responseWithJsonBody(w, ToTaskDtoFrom(task), http.StatusOK)
 	}
@@ -61,7 +65,12 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 
 	if err := h.service.DeleteTask(id); err != nil {
-		responseWithError(w, err, http.StatusNotFound)
+		err = fmt.Errorf("task %q: %w", id, err)
+		code := http.StatusNotFound
+		if errors.Is(err, domain.ErrInvalidTaskId) {
+			code = http.StatusBadRequest
+		}
+		responseWithError(w, err, code)
 	} else {
 		w.WriteHeader(http.StatusNoContent)
 	}

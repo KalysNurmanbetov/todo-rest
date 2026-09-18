@@ -1,53 +1,78 @@
 package domain
 
 import (
-	"strings"
 	"time"
 )
 
 type Task struct {
-	Id          string
-	Title       string
-	Completed   bool
-	CreateAt    time.Time
-	CompletedAt *time.Time
+	id          TaskId
+	title       TaskTitle
+	completed   bool
+	createAt    time.Time
+	completedAt *time.Time
 }
 
-func NewTask(id string, title string) (*Task, error) {
-	if strings.Trim(title, " ") == "" {
-		return nil, ErrEmptyTitle
-	}
-
+func NewTask(id TaskId, title TaskTitle) (*Task, error) {
 	return &Task{
-		Id:          id,
-		Title:       title,
-		Completed:   false,
-		CreateAt:    time.Now(),
-		CompletedAt: nil,
+		id:          id,
+		title:       title,
+		completed:   false,
+		createAt:    time.Now(),
+		completedAt: nil,
 	}, nil
 }
 
-func (t *Task) ChangeTitle(title string) error {
-	t.Title = title
+func (t *Task) ChangeTitle(title TaskTitle) error {
+	if t.completed {
+		return ErrChangeTitleOfAlreadyCompleted
+	}
+	t.title = title
 	return nil
 }
 
 func (t *Task) Complete() error {
-	if t.Completed {
+	if t.completed {
 		return ErrTaskAlreadyCompleted
 	}
 	completeTime := time.Now()
 
-	t.Completed = true
-	t.CompletedAt = &completeTime
+	t.completed = true
+	t.completedAt = &completeTime
 	return nil
 }
 
 func (t *Task) Uncomplete() error {
-	if t.Completed == false {
+	if t.completed == false {
 		return ErrTaskAlreadyUncompleted
 	}
-	t.Completed = false
-	t.CompletedAt = nil
+	t.completed = false
+	t.completedAt = nil
 	return nil
+}
+
+func (t *Task) Id() TaskId {
+	return t.id
+}
+
+func (t *Task) Title() TaskTitle {
+	return t.title
+}
+
+func (t *Task) Completed() bool {
+	return t.completed
+}
+
+func (t *Task) CreatedAt() time.Time {
+	return t.createAt
+}
+
+func (t *Task) CompletedAt() *time.Time {
+	return t.completedAt
+}
+
+// Only for infrustructure level to restore the state from storage
+func RehydrateTask(id TaskId, title TaskTitle, completed bool, createdAt time.Time, completedAt *time.Time) *Task {
+	return &Task{
+		id: id, title: title, completed: completed, createAt: createdAt, completedAt: completedAt,
+	}
 }

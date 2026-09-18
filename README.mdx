@@ -1,11 +1,14 @@
 # todo-rest
 
-A small REST API for managing tasks (todos), built with the Go standard library only (`net/http`, no framework). Written as a learning project.
+A small REST API for managing tasks (todos), built with the Go standard library only (`net/http`, no framework).
+
+This project exists to practice **tactical Domain-Driven Design patterns in Go** — Entities vs Value Objects, a repository interface owned by the domain, an application/service layer as the use-case orchestrator, sentinel domain errors, etc. The domain itself (a todo list) is **intentionally trivial** on purpose: the goal is to keep the *business logic* boring so all the attention goes to the *shape of the code* around it, not to the other way around.
 
 ## Stack
 
 - Go 1.22+ (uses the enhanced `net/http.ServeMux` routing — `"METHOD /path/{param}"` patterns and `r.PathValue`)
-- No external dependencies — in-memory storage (a `map[string]Task` guarded by a mutex), data is lost on restart
+- [`github.com/google/uuid`](https://github.com/google/uuid) — the only external dependency, used by the domain to generate task IDs
+- In-memory storage only — data is lost on restart (see [Known limitations](#known-limitations))
 
 ## Running it
 
@@ -18,14 +21,23 @@ The server listens on `http://localhost:9091`.
 ## Architecture
 
 ```
-domain/      # Task entity + invariants, TaskRepostory (in-memory store), domain errors
-infra/       # HTTP controller, DTOs, request/response helpers, ID generator
-main.go      # wiring: repository -> controller -> routes
+domain/       # Task entity, Value Objects (TaskId, TaskTitle), the TaskRepostory
+              # interface, and sentinel domain errors. No knowledge of HTTP or storage.
+application/  # TaskService — one method per use case (create, complete, rename, ...).
+              # Owns the transactional boundary (a mutex around each use case).
+infra/        # HTTP layer (TaskHandler, DTOs) and the in-memory TaskRepostory
+              # implementation. Both depend on domain, domain depends on neither.
+main.go       # wiring: repository -> service -> handler -> routes
 ```
 
-- `Task` enforces its own invariants (e.g. you can't complete an already-completed task) — the HTTP layer never mutates task state directly, it always goes through domain methods like `task.Complete()`.
-- `TaskRepostory.Update(id, fn)` runs a read-modify-write against a task under a single lock, so state transitions are atomic even under concurrent requests.
-- All responses (success and error) are JSON, served with `Content-Type: application/json`.
+Tactical patterns used, and why:
+
+- **Entity (`domain.Task`)** — has identity (`TaskId`) and is mutable, so it's passed around as `*Task`, not a value. All fields are unexported; the only way to change state is through methods that guard their own invariants (`Complete`, `Uncomplete`, `ChangeTitle`) — nothing outside the `domain` package can put a `Task` into an invalid state.
+- **Value Objects (`TaskId`, `TaskTitle`)** — immutable, validated at construction, and structurally impossible to forge from outside the package: both wrap an unexported field inside a struct, so `domain.TaskTitle{}` literals or raw string conversions can't bypass validation. The only way to get one is through its constructor (`NewTaskId`, `TaskIdFromString`, `NewTaskTitle`).
+- **Repository pattern** — the interface (`domain.TaskRepostory`) lives in `domain`; the implementation lives in `infra`. The domain has no idea whether tasks live in a map, a file, or a database.
+- **Application/service layer (`application.TaskService`)** — translates primitive input (strings) into domain Value Objects, calls domain methods, and owns the transaction boundary. The mutex lives here, not in the repository, because a use case like "complete a task" is a read-modify-write *across two repository calls* (`FindById` then `Insert`) that must be atomic as a whole — only the service knows that boundary.
+- **Create vs. reconstitute** — `domain.NewTask` builds a brand-new task (fresh defaults: not completed, `createdAt = now`). `domain.RehydrateTask` rebuilds a task from already-trusted persisted state (used by the repository when reading back a stored task) without re-applying creation defaults or running invariant-guarded methods.
+- **Sentinel errors, wrapped with context** — domain errors (`ErrTaskNotFound`, `ErrTaskAlreadyCompleted`, ...) are plain `errors.New` values, so callers classify them with `errors.Is`. Context (which task ID failed) is added by wrapping at the point the error is raised: `fmt.Errorf("task %q: %w", id, err)`.
 
 ## API Reference
 
@@ -36,6 +48,7 @@ Base URL: `http://localhost:9091`
 | `POST` | `/tasks` | Create a task |
 | `GET` | `/tasks` | List tasks (optionally filtered) |
 | `GET` | `/tasks/{id}` | Get a single task |
+| `PATCH` | `/tasks/{id}` | Rename a task |
 | `POST` | `/tasks/{id}/complete` | Mark a task as completed |
 | `POST` | `/tasks/{id}/uncomplete` | Mark a task as not completed |
 | `DELETE` | `/tasks/{id}` | Delete a task |
@@ -61,7 +74,7 @@ Content-Type: application/json
 
 ```json
 {
-  "id": "1",
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "title": "Buy milk"
 }
 ```
@@ -71,6 +84,7 @@ Content-Type: application/json
 | Status | Reason |
 |---|---|
 | `400 Bad Request` | Malformed JSON, or `title` is empty |
+| `409 Conflict` | `title` is longer than 200 characters |
 
 ---
 
@@ -88,10 +102,16 @@ The optional `completed` query parameter filters the list. Omit it (or pass any 
 
 ```json
 [
-  { "id": "1", "title": "Buy milk", "completed": false },
-  { "id": "2", "title": "Walk the dog", "completed": true }
+  { "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "title": "Buy milk", "completed": false, "createdAt": "2026-09-19T10:00:00Z" },
+  { "id": "5c3e8f2a-1b4d-4e9a-9c7f-8a2d6b1e4f3c", "title": "Walk the dog", "completed": true, "createdAt": "2026-09-19T09:00:00Z", "completedAt": "2026-09-19T09:30:00Z" }
 ]
 ```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `500 Internal Server Error` | Stored task data could not be read back (storage corruption) |
 
 ---
 
@@ -105,9 +125,10 @@ GET /tasks/{id}
 
 ```json
 {
-  "id": "1",
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "title": "Buy milk",
-  "completed": false
+  "completed": false,
+  "createdAt": "2026-09-19T10:00:00Z"
 }
 ```
 
@@ -115,7 +136,44 @@ GET /tasks/{id}
 
 | Status | Reason |
 |---|---|
+| `400 Bad Request` | `id` is not a valid UUID |
 | `404 Not Found` | No task with that `id` |
+
+---
+
+### Rename a task
+
+```
+PATCH /tasks/{id}
+Content-Type: application/json
+```
+
+**Body**
+
+```json
+{
+  "title": "Buy oat milk"
+}
+```
+
+**Response — `200 OK`**
+
+```json
+{
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "title": "Buy oat milk",
+  "completed": false,
+  "createdAt": "2026-09-19T10:00:00Z"
+}
+```
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| `400 Bad Request` | Malformed JSON, or `title` is empty |
+| `404 Not Found` | No task with that `id` |
+| `409 Conflict` | `title` is longer than 200 characters, task is already completed, or `id` is not a valid UUID¹ |
 
 ---
 
@@ -129,9 +187,11 @@ POST /tasks/{id}/complete
 
 ```json
 {
-  "id": "1",
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "title": "Buy milk",
-  "completed": true
+  "completed": true,
+  "createdAt": "2026-09-19T10:00:00Z",
+  "completedAt": "2026-09-19T10:05:00Z"
 }
 ```
 
@@ -140,7 +200,7 @@ POST /tasks/{id}/complete
 | Status | Reason |
 |---|---|
 | `404 Not Found` | No task with that `id` |
-| `500 Internal Server Error` | Task is already completed |
+| `409 Conflict` | Task is already completed, or `id` is not a valid UUID¹ |
 
 ---
 
@@ -154,9 +214,10 @@ POST /tasks/{id}/uncomplete
 
 ```json
 {
-  "id": "1",
+  "id": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "title": "Buy milk",
-  "completed": false
+  "completed": false,
+  "createdAt": "2026-09-19T10:00:00Z"
 }
 ```
 
@@ -165,7 +226,7 @@ POST /tasks/{id}/uncomplete
 | Status | Reason |
 |---|---|
 | `404 Not Found` | No task with that `id` |
-| `500 Internal Server Error` | Task is already uncompleted |
+| `409 Conflict` | Task is already uncompleted, or `id` is not a valid UUID¹ |
 
 ---
 
@@ -181,9 +242,12 @@ DELETE /tasks/{id}
 
 | Status | Reason |
 |---|---|
+| `400 Bad Request` | `id` is not a valid UUID |
 | `404 Not Found` | No task with that `id` |
 
 ---
+
+¹ *Known inconsistency: an invalid ID format returns `400` on `GET`/`DELETE`, but currently falls through to `409` on `PATCH`/`complete`/`uncomplete`, since those handlers only special-case "not found" and treat everything else as a conflict. Worth aligning later.*
 
 ## Error format
 
@@ -191,11 +255,14 @@ All errors share one shape:
 
 ```json
 {
-  "message": "task with id '99' was not found",
-  "time": "2026-09-14T12:00:00Z"
+  "message": "task \"99\": task is not found",
+  "time": "2026-09-19T12:00:00Z"
 }
 ```
 
 ## Known limitations
 
 - Storage is in-memory only — restarting the server clears all tasks.
+- The in-memory repository has no locking of its own; safety under concurrent requests relies entirely on `application.TaskService` wrapping each use case in a mutex. Using the repository directly, outside the service, would not be safe.
+- Invalid-ID-format status codes are inconsistent across endpoints — see the footnote above.
+- No automated tests yet.

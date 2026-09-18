@@ -1,6 +1,6 @@
 package domain
 
-type TaskRepostory interface {
+type TaskRepository interface {
 	Insert(t *Task) (*Task, error)
 	FindById(id TaskId) (*Task, error)
 	RemoveById(id TaskId) error

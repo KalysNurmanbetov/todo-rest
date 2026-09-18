@@ -14,20 +14,20 @@ type taskModel struct {
 	CompletedAt *time.Time
 }
 
-type TaskRepostoryMap struct {
+type TaskRepositoryMap struct {
 	tasks map[string]taskModel
 }
 
-func NewTaskRepository() *TaskRepostoryMap {
-	return &TaskRepostoryMap{tasks: map[string]taskModel{}}
+func NewTaskRepository() *TaskRepositoryMap {
+	return &TaskRepositoryMap{tasks: map[string]taskModel{}}
 }
 
-func (r *TaskRepostoryMap) Insert(t *domain.Task) (*domain.Task, error) {
+func (r *TaskRepositoryMap) Insert(t *domain.Task) (*domain.Task, error) {
 	r.tasks[t.Id().Value()] = fromDomainToModel(t)
 	return t, nil
 }
 
-func (r *TaskRepostoryMap) RemoveById(id domain.TaskId) error {
+func (r *TaskRepositoryMap) RemoveById(id domain.TaskId) error {
 	if _, ok := r.tasks[id.Value()]; ok == true {
 		delete(r.tasks, id.Value())
 		return nil
@@ -36,7 +36,7 @@ func (r *TaskRepostoryMap) RemoveById(id domain.TaskId) error {
 	}
 }
 
-func (r *TaskRepostoryMap) FindById(id domain.TaskId) (*domain.Task, error) {
+func (r *TaskRepositoryMap) FindById(id domain.TaskId) (*domain.Task, error) {
 	if t, ok := r.tasks[id.Value()]; ok == true {
 		return t.toDomain()
 	} else {
@@ -44,20 +44,20 @@ func (r *TaskRepostoryMap) FindById(id domain.TaskId) (*domain.Task, error) {
 	}
 }
 
-func (r *TaskRepostoryMap) FindAll() ([]*domain.Task, error) {
+func (r *TaskRepositoryMap) FindAll() ([]*domain.Task, error) {
 	return r.getAllTasks(func(t taskModel) bool {
 		return true
 	})
 }
 
-func (r *TaskRepostoryMap) FindAllCompleted() ([]*domain.Task, error) {
+func (r *TaskRepositoryMap) FindAllCompleted() ([]*domain.Task, error) {
 	return r.getAllTasks(func(t taskModel) bool {
 		return t.Completed
 	})
 
 }
 
-func (r *TaskRepostoryMap) FindAllUncompleted() ([]*domain.Task, error) {
+func (r *TaskRepositoryMap) FindAllUncompleted() ([]*domain.Task, error) {
 	return r.getAllTasks(func(t taskModel) bool {
 		return t.Completed == false
 	})
@@ -88,7 +88,7 @@ func (m taskModel) toDomain() (*domain.Task, error) {
 
 }
 
-func (r *TaskRepostoryMap) getAllTasks(predicate func(t taskModel) bool) ([]*domain.Task, error) {
+func (r *TaskRepositoryMap) getAllTasks(predicate func(t taskModel) bool) ([]*domain.Task, error) {
 	result := []*domain.Task{}
 	for _, t := range r.tasks {
 		if predicate(t) {

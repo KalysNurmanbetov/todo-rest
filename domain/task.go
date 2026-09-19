@@ -12,14 +12,14 @@ type Task struct {
 	completedAt *time.Time
 }
 
-func NewTask(id TaskId, title TaskTitle) (*Task, error) {
+func NewTask(id TaskId, title TaskTitle) *Task {
 	return &Task{
 		id:          id,
 		title:       title,
 		completed:   false,
 		createAt:    time.Now(),
 		completedAt: nil,
-	}, nil
+	}
 }
 
 func (t *Task) ChangeTitle(title TaskTitle) error {

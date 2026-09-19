@@ -28,10 +28,7 @@ func (ts *TaskService) InsertNewTask(title string) (*domain.Task, error) {
 		return nil, err
 	}
 
-	newTask, err := domain.NewTask(domain.NewTaskId(), taskTitle)
-	if err != nil {
-		return nil, err
-	}
+	newTask := domain.NewTask(domain.NewTaskId(), taskTitle)
 
 	ts.mtx.Lock()
 	defer ts.mtx.Unlock()

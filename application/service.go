@@ -40,7 +40,7 @@ func (ts *TaskService) InsertNewTask(title string) (*domain.Task, error) {
 
 func (ts *TaskService) GetTask(id string) (*domain.Task, error) {
 
-	taskId, err := domain.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFrom(id)
 
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (ts *TaskService) GetTask(id string) (*domain.Task, error) {
 }
 
 func (ts *TaskService) DeleteTask(id string) error {
-	taskId, err := domain.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFrom(id)
 
 	if err != nil {
 		return err
@@ -83,7 +83,7 @@ func (ts *TaskService) GetAllTasks(f CompletionFilter) ([]*domain.Task, error) {
 }
 
 func (ts *TaskService) ChangeTaskTitle(id, title string) (*domain.Task, error) {
-	taskId, err := domain.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFrom(id)
 	if err != nil {
 		return nil, err
 	}
@@ -109,7 +109,7 @@ func (ts *TaskService) ChangeTaskTitle(id, title string) (*domain.Task, error) {
 }
 
 func (ts *TaskService) CompleteTask(id string) (*domain.Task, error) {
-	taskId, err := domain.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFrom(id)
 	if err != nil {
 		return nil, err
 	}
@@ -130,7 +130,7 @@ func (ts *TaskService) CompleteTask(id string) (*domain.Task, error) {
 }
 
 func (ts *TaskService) UncompleteTask(id string) (*domain.Task, error) {
-	taskId, err := domain.TaskIdFromString(id)
+	taskId, err := domain.TaskIdFrom(id)
 	if err != nil {
 		return nil, err
 	}

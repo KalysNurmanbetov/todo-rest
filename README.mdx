@@ -33,7 +33,7 @@ main.go       # wiring: repository -> service -> handler -> routes
 Tactical patterns used, and why:
 
 - **Entity (`domain.Task`)** — has identity (`TaskId`) and is mutable, so it's passed around as `*Task`, not a value. All fields are unexported; the only way to change state is through methods that guard their own invariants (`Complete`, `Uncomplete`, `ChangeTitle`) — nothing outside the `domain` package can put a `Task` into an invalid state.
-- **Value Objects (`TaskId`, `TaskTitle`)** — immutable, validated at construction, and structurally impossible to forge from outside the package: both wrap an unexported field inside a struct, so `domain.TaskTitle{}` literals or raw string conversions can't bypass validation. The only way to get one is through its constructor (`NewTaskId`, `TaskIdFromString`, `NewTaskTitle`).
+- **Value Objects (`TaskId`, `TaskTitle`)** — immutable, validated at construction, and structurally impossible to forge from outside the package: both wrap an unexported field inside a struct, so `domain.TaskTitle{}` literals or raw string conversions can't bypass validation. The only way to get one is through its constructor (`NewTaskId`, `TaskIdFrom`, `NewTaskTitle`).
 - **Repository pattern** — the interface (`domain.TaskRepository`) lives in `domain`; the implementation lives in `infra`. The domain has no idea whether tasks live in a map, a file, or a database.
 - **Application/service layer (`application.TaskService`)** — translates primitive input (strings) into domain Value Objects, calls domain methods, and owns the transaction boundary. The mutex lives here, not in the repository, because a use case like "complete a task" is a read-modify-write *across two repository calls* (`FindById` then `Insert`) that must be atomic as a whole — only the service knows that boundary.
 - **Create vs. reconstitute** — `domain.NewTask` builds a brand-new task (fresh defaults: not completed, `createdAt = now`). `domain.RehydrateTask` rebuilds a task from already-trusted persisted state (used by the repository when reading back a stored task) without re-applying creation defaults or running invariant-guarded methods.
@@ -171,9 +171,9 @@ Content-Type: application/json
 
 | Status | Reason |
 |---|---|
-| `400 Bad Request` | Malformed JSON, or `title` is empty |
+| `400 Bad Request` | Malformed JSON, `title` is empty, or `id` is not a valid UUID |
 | `404 Not Found` | No task with that `id` |
-| `409 Conflict` | `title` is longer than 200 characters, task is already completed, or `id` is not a valid UUID¹ |
+| `409 Conflict` | `title` is longer than 200 characters, or task is already completed |
 
 ---
 
@@ -199,8 +199,9 @@ POST /tasks/{id}/complete
 
 | Status | Reason |
 |---|---|
+| `400 Bad Request` | `id` is not a valid UUID |
 | `404 Not Found` | No task with that `id` |
-| `409 Conflict` | Task is already completed, or `id` is not a valid UUID¹ |
+| `409 Conflict` | Task is already completed |
 
 ---
 
@@ -225,8 +226,9 @@ POST /tasks/{id}/uncomplete
 
 | Status | Reason |
 |---|---|
+| `400 Bad Request` | `id` is not a valid UUID |
 | `404 Not Found` | No task with that `id` |
-| `409 Conflict` | Task is already uncompleted, or `id` is not a valid UUID¹ |
+| `409 Conflict` | Task is already uncompleted |
 
 ---
 
@@ -247,8 +249,6 @@ DELETE /tasks/{id}
 
 ---
 
-¹ *Known inconsistency: an invalid ID format returns `400` on `GET`/`DELETE`, but currently falls through to `409` on `PATCH`/`complete`/`uncomplete`, since those handlers only special-case "not found" and treat everything else as a conflict. Worth aligning later.*
-
 ## Error format
 
 All errors share one shape:
@@ -264,5 +264,4 @@ All errors share one shape:
 
 - Storage is in-memory only — restarting the server clears all tasks.
 - The in-memory repository has no locking of its own; safety under concurrent requests relies entirely on `application.TaskService` wrapping each use case in a mutex. Using the repository directly, outside the service, would not be safe.
-- Invalid-ID-format status codes are inconsistent across endpoints — see the footnote above.
-- No automated tests yet.
+- No automated tests outside `domain` yet.

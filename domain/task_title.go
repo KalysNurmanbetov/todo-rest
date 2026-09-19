@@ -7,14 +7,14 @@ type TaskTitle struct {
 }
 
 func NewTaskTitle(v string) (TaskTitle, error) {
-	if strings.Trim(v, " ") == "" {
+	if trimedV := strings.Trim(v, " "); trimedV == "" {
 		return TaskTitle{}, ErrEmptyTitle
+	} else {
+		if len(trimedV) > 200 {
+			return TaskTitle{}, ErrTooLongTitle
+		}
+		return TaskTitle{value: trimedV}, nil
 	}
-	if len(v) > 200 {
-		return TaskTitle{}, ErrTooLongTitle
-	}
-
-	return TaskTitle{value: v}, nil
 }
 
 func (t TaskTitle) Value() string {

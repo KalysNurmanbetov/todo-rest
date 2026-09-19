@@ -10,7 +10,7 @@ func NewTaskId() TaskId {
 	return TaskId{value: uuid.NewString()}
 }
 
-func TaskIdFromString(v string) (TaskId, error) {
+func TaskIdFrom(v string) (TaskId, error) {
 	if err := uuid.Validate(v); err != nil {
 		return TaskId{}, ErrInvalidTaskId
 	}

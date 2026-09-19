@@ -76,7 +76,7 @@ func fromDomainToModel(d *domain.Task) taskModel {
 }
 
 func (m taskModel) toDomain() (*domain.Task, error) {
-	id, err := domain.TaskIdFromString(m.Id)
+	id, err := domain.TaskIdFrom(m.Id)
 	if err != nil {
 		return nil, fmt.Errorf("corrupted task id %q in storage: %w", m.Id, err)
 	}

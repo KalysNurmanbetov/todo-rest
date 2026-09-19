@@ -88,9 +88,12 @@ func (h *TaskHandler) ChangeTaskTitle(w http.ResponseWriter, r *http.Request) {
 	if task, err := h.service.ChangeTaskTitle(id, dto.Title); err != nil {
 		err = fmt.Errorf("task %q: %w", id, err)
 		var code int
-		if errors.Is(err, domain.ErrTaskNotFound) {
+		switch {
+		case errors.Is(err, domain.ErrInvalidTaskId):
+			code = http.StatusBadRequest
+		case errors.Is(err, domain.ErrTaskNotFound):
 			code = http.StatusNotFound
-		} else {
+		default:
 			code = http.StatusConflict
 		}
 
@@ -106,9 +109,12 @@ func (h *TaskHandler) CompleteTask(w http.ResponseWriter, r *http.Request) {
 	if task, err := h.service.CompleteTask(id); err != nil {
 		err = fmt.Errorf("task %q: %w", id, err)
 		var code int
-		if errors.Is(err, domain.ErrTaskNotFound) {
+		switch {
+		case errors.Is(err, domain.ErrInvalidTaskId):
+			code = http.StatusBadRequest
+		case errors.Is(err, domain.ErrTaskNotFound):
 			code = http.StatusNotFound
-		} else {
+		default:
 			code = http.StatusConflict
 		}
 
@@ -124,9 +130,12 @@ func (h *TaskHandler) UncompleteTask(w http.ResponseWriter, r *http.Request) {
 	if task, err := h.service.UncompleteTask(id); err != nil {
 		err = fmt.Errorf("task %q: %w", id, err)
 		var code int
-		if errors.Is(err, domain.ErrTaskNotFound) {
+		switch {
+		case errors.Is(err, domain.ErrInvalidTaskId):
+			code = http.StatusBadRequest
+		case errors.Is(err, domain.ErrTaskNotFound):
 			code = http.StatusNotFound
-		} else {
+		default:
 			code = http.StatusConflict
 		}
 		responseWithError(w, err, code)

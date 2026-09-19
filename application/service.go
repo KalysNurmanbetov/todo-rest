@@ -73,6 +73,7 @@ func (ts *TaskService) GetAllTasks(f CompletionFilter) ([]*domain.Task, error) {
 	case AllUncompleted:
 		tasks, err = ts.taskRepository.FindAllUncompleted()
 	case All:
+	default:
 		tasks, err = ts.taskRepository.FindAll()
 	}
 

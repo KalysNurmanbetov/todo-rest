@@ -12,11 +12,23 @@ This project exists to practice **tactical Domain-Driven Design patterns in Go**
 
 ## Running it
 
-```bash
-go run .
-```
+The app reads its configuration from a YAML file, whose path must be passed via the `CONFIG_PATH` environment variable — there is no default, so the process refuses to start without it.
 
-The server listens on `http://localhost:9091`.
+1. Copy the template and adjust it if needed:
+
+   ```bash
+   cp config/config-template.yaml config/config.yaml
+   ```
+
+   `config/config.yaml` is git-ignored (see `.gitignore`) — it's your local copy, not meant to be committed.
+
+2. Run the server, pointing `CONFIG_PATH` at it:
+
+   ```bash
+   CONFIG_PATH=./config/config.yaml go run .
+   ```
+
+The server listens on the `address` set in the config file (`localhost:9091` by default).
 
 ## Architecture
 

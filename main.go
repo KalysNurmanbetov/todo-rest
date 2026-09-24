@@ -5,9 +5,12 @@ import (
 	"net/http"
 	"todo-rest/application"
 	"todo-rest/infra"
+	"todo-rest/infra/config"
 )
 
 func main() {
+	cfg := config.MustLoad()
+
 	mux := http.NewServeMux()
 
 	taskRepository := infra.NewTaskRepository()
@@ -16,7 +19,7 @@ func main() {
 
 	taskHandler.RegisterRoutes(mux)
 
-	if err := http.ListenAndServe(":9091", mux); err != nil {
+	if err := http.ListenAndServe(cfg.Address, mux); err != nil {
 		fmt.Println("Server start failed: ", err)
 	}
 }

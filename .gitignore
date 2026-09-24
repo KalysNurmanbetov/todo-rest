@@ -1,0 +1,5 @@
+# Local config (copy config/config-template.yaml and adjust as needed)
+config/config.yaml
+
+# Build artifacts
+/todo-rest

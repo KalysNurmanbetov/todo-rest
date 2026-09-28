@@ -1,6 +1,12 @@
 env: "local" # local, dev, prod
-storage_path: ".."
 http-server:
   address: "localhost:9091"
   timeout: "4s"
   idle_timeout: "60s"
+postgres:
+  host: "localhost"
+  port: "5432"
+  user: "username"
+  password: "password"
+  dbname: "postgres"
+  sslmode: "disable"

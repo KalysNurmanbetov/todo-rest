@@ -7,12 +7,13 @@ This project exists to practice **tactical Domain-Driven Design patterns in Go**
 ## Stack
 
 - Go 1.22+ (uses the enhanced `net/http.ServeMux` routing — `"METHOD /path/{param}"` patterns and `r.PathValue`)
-- [`github.com/google/uuid`](https://github.com/google/uuid) — the only external dependency, used by the domain to generate task IDs
-- In-memory storage only — data is lost on restart (see [Known limitations](#known-limitations))
+- [`github.com/google/uuid`](https://github.com/google/uuid) — used by the domain to generate task IDs
+- [`github.com/jackc/pgx/v5`](https://github.com/jackc/pgx) (`pgxpool`) — PostgreSQL driver and connection pool
+- PostgreSQL storage — data persists across restarts. Schema is bootstrapped automatically on startup (`CREATE TABLE IF NOT EXISTS`), there's no migration tool yet (see [Known limitations](#known-limitations))
 
 ## Running it
 
-The app reads its configuration from a YAML file, whose path must be passed via the `CONFIG_PATH` environment variable — there is no default, so the process refuses to start without it.
+The app reads its configuration from a YAML file, whose path must be passed via the `CONFIG_PATH` environment variable — there is no default, so the process refuses to start without it. You also need a reachable PostgreSQL server with the target database already created — the app creates the `tasks` *table* itself on startup, but not the database.
 
 1. Copy the template and adjust it if needed:
 
@@ -20,7 +21,7 @@ The app reads its configuration from a YAML file, whose path must be passed via 
    cp config/config-template.yaml config/config.yaml
    ```
 
-   `config/config.yaml` is git-ignored (see `.gitignore`) — it's your local copy, not meant to be committed.
+   `config/config.yaml` is git-ignored (see `.gitignore`) — it's your local copy, not meant to be committed. Fill in the `postgres` section (`host`, `port`, `user`, `password`, `dbname`, `sslmode`) with your local credentials.
 
 2. Run the server, pointing `CONFIG_PATH` at it:
 
@@ -28,18 +29,20 @@ The app reads its configuration from a YAML file, whose path must be passed via 
    CONFIG_PATH=./config/config.yaml go run .
    ```
 
-The server listens on the `address` set in the config file (`localhost:9091` by default).
+The server listens on the `address` set in the config file (`localhost:9091` by default). On startup it opens a connection pool to Postgres and runs `CREATE TABLE IF NOT EXISTS tasks (...)` (see [`infra/postgres/helper.go`](infra/postgres/helper.go)) before it starts accepting requests.
 
 ## Architecture
 
 ```
-domain/       # Task entity, Value Objects (TaskId, TaskTitle), the TaskRepository
-              # interface, and sentinel domain errors. No knowledge of HTTP or storage.
-application/  # TaskService — one method per use case (create, complete, rename, ...).
-              # Owns the transactional boundary (a mutex around each use case).
-infra/        # HTTP layer (TaskHandler, DTOs) and the in-memory TaskRepository
-              # implementation. Both depend on domain, domain depends on neither.
-main.go       # wiring: repository -> service -> handler -> routes
+domain/                        # Task entity, Value Objects (TaskId, TaskTitle), the TaskRepository
+                                # interface, and sentinel domain errors. No knowledge of HTTP or storage.
+application/                   # TaskService — one method per use case (create, complete, rename, ...).
+                                # Owns the transactional boundary (a mutex around each use case).
+infra/                         # HTTP layer (TaskHandler, DTOs).
+infra/config/                  # YAML + env config loading (cleanenv), including Postgres DSN building.
+infra/postgres/                # Connection pool bootstrap (OpenPool) and schema bootstrap (BootstrapSchema).
+infra/postgres/repositories/   # TaskRepositoryPostgres — the domain.TaskRepository implementation, backed by pgx.
+main.go                        # wiring: open pool -> bootstrap schema -> repository -> service -> handler -> routes
 ```
 
 Tactical patterns used, and why:
@@ -274,6 +277,7 @@ All errors share one shape:
 
 ## Known limitations
 
-- Storage is in-memory only — restarting the server clears all tasks.
-- The in-memory repository has no locking of its own; safety under concurrent requests relies entirely on `application.TaskService` wrapping each use case in a mutex. Using the repository directly, outside the service, would not be safe.
-- No automated tests outside `domain` yet.
+- No migration tool — the schema is a single `CREATE TABLE IF NOT EXISTS` run on every startup (see [`infra/postgres/helper.go`](infra/postgres/helper.go)). It won't apply changes to an already-existing table, so schema changes currently have to be made by hand.
+- `context.Context` isn't part of the `domain.TaskRepository` interface — `TaskRepositoryPostgres` uses `context.Background()` internally for every query, so an HTTP request's cancellation/timeout never propagates down to the database call.
+- The read-modify-write use cases (`CompleteTask`, `UncompleteTask`, `ChangeTaskTitle`) are two separate repository calls (`FindById` then `Insert`) made atomic only by `application.TaskService`'s in-process mutex — there's no database transaction wrapping them. This means correctness under concurrency only holds for a single running instance of the app; it would not be safe to run two instances against the same database.
+- No automated tests outside `domain` yet — `TaskRepositoryPostgres` has no integration test coverage.

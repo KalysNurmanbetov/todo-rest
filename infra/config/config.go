@@ -1,8 +1,9 @@
 package config
 
 import (
-	"fmt"
 	"log"
+	"net"
+	"net/url"
 	"os"
 
 	"github.com/ilyakaznacheev/cleanenv"
@@ -30,7 +31,16 @@ type Postgres struct {
 }
 
 func (p Postgres) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s", p.User, p.Password, p.Host, p.Port, p.DBname, p.SSLMode)
+	u := url.URL{
+		Scheme: "postgres",
+		User:   url.UserPassword(p.User, p.Password),
+		Host:   net.JoinHostPort(p.Host, p.Port),
+		Path:   "/" + p.DBname,
+	}
+	q := u.Query()
+	q.Set("sslmode", p.SSLMode)
+	u.RawQuery = q.Encode()
+	return u.String()
 }
 
 func MustLoad() *Config {

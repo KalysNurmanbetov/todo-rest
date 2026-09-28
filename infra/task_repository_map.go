@@ -18,7 +18,7 @@ type TaskRepositoryMap struct {
 	tasks map[string]taskModel
 }
 
-func NewTaskRepository() *TaskRepositoryMap {
+func NewTaskRepositoryMap() *TaskRepositoryMap {
 	return &TaskRepositoryMap{tasks: map[string]taskModel{}}
 }
 

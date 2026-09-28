@@ -9,6 +9,7 @@ import (
 	"todo-rest/infra"
 	"todo-rest/infra/config"
 	"todo-rest/infra/postgres"
+	"todo-rest/infra/postgres/repositories"
 )
 
 func main() {
@@ -28,7 +29,7 @@ func main() {
 		log.Fatalf("bootstrap schema failed: %s", err)
 	}
 
-	taskRepository := infra.NewTaskRepositoryMap()
+	taskRepository := repositories.NewTaskRepositoryPostgres(pool)
 	taskService := application.NewTaskService(taskRepository)
 	taskHandler := infra.NewTaskHandler(taskService)
 
